@@ -8,10 +8,10 @@ use Toxiproxy;
 sub main {
     my $toxiproxy = Toxiproxy->new( base_url => "http://127.0.0.1:8474" );
 
-    $toxiproxy->delete("examples_test_redis_master");
+    $toxiproxy->delete("examples_create_redis_master");
 
     my $proxy = $toxiproxy->create(
-        "examples_test_redis_master",
+        "examples_create_redis_master",
         "127.0.0.1:6379",
         "127.0.0.1:42424"
     );

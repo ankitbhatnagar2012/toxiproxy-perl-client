@@ -3,6 +3,8 @@ package Proxy;
 use Moose;
 use namespace::autoclean;
 
+use Utils;
+
 use constant {
     UPSTREAM    => 'upstream',
     DOWNSTREAM  => 'downstream',
@@ -61,25 +63,25 @@ sub getListenPort {
 
 sub setToxic {
     my ( $self, $toxic, $direction, $data ) = @_;
-    my $url = _constructUrl( $self->name, $direction, $toxic );
-    eval {
-        # TODO : POST $url json_encode( $data );
-        1;
-    } or do {
-        my $eval_error = $@ || "Zombie error";
-        # XXX
-    };
+    my $url = ""; # XXX ( $self->name, $direction, $toxic );
+    my $response = Utils::HTTP({
+        ua => $self->toxiproxy->{ ua },
+        endpoint => $url,
+        body => json_encode $data,
+    });
+
+    return $response->content(); # XXX
 }
 
 sub setProxy {
     my ( $self, $data ) = @_;
-    eval {
-        # TODO : POST /proxies/$self->name, json_encode( $data )
-        1; 
-    } or do {
-        my $eval_error = $@ || "Zombie error";
-        # XXX
-    };
+    my $response = Utils::HTTP({
+        ua => $self->toxiproxy->{ ua },
+        endpoint => $self->toxiproxy->{ base_url } . "/proxies/" . $self->name,
+        body => json_encode( $data ),
+    });
+
+    return $response->content(); # XXX
 }
 
 sub update {
@@ -89,17 +91,17 @@ sub update {
     die "Invalid direction, must be one of valid_directions"
         unless grep { $_ eq $direction } @valid_directions;
 
-    my @settings = ();
+    my @settings = (); # XXX check on what this does!
     my $key = $direction . "Toxics";
-    my $direction_data = $self->key;
-    if( exists $direction_data->{ $toxic } ) {
-        push @settings, $direction_data->{ $toxic };
-    }
+    my @direction_data = $self->{ $key };
+    
+    push @direction_data, $toxic
+        unless ( grep { $_ eq $toxic } @direction_data );
 
     return $self->setToxic(
         $toxic,
         $direction,
-        ( @settings, @options )
+        ( @direction_data, @options ) # FIXME : think about the request object
     );
 }
 
