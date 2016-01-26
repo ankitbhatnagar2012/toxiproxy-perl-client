@@ -3,6 +3,8 @@ package Proxy;
 use Moose;
 use namespace::autoclean;
 
+use JSON qw( encode_json decode_json );
+
 use Utils;
 
 use constant {
@@ -41,12 +43,12 @@ has listen => (
 
 has upstreamToxics => (
     is => 'rw',
-    isa => 'Maybe[Array]',
+    isa => 'Maybe[ HashRef ]',
 );
 
 has downstreamToxics => (
     is => 'rw',
-    isa => 'Maybe[Array]',
+    isa => 'Maybe[ HashRef ]',
 );
 
 sub getListenIP {
@@ -63,63 +65,66 @@ sub getListenPort {
 
 sub setToxic {
     my ( $self, $toxic, $direction, $data ) = @_;
-    my $url = ""; # XXX ( $self->name, $direction, $toxic );
+    
+    my $url = sprintf("%s/proxies/%s/%s/toxics/%s", 
+        $self->toxiproxy->{ base_url},
+        $self->name,
+        $direction,
+        $toxic
+    );
+
     my $response = Utils::HTTP({
-        ua => $self->toxiproxy->{ ua },
-        endpoint => $url,
-        body => json_encode $data,
+        ua          => $self->toxiproxy->{ ua },
+        method      => 'POST',
+        endpoint    => $url,
+        body        => encode_json $data,
     });
 
-    return $response->content(); # XXX
+    return $response->content();
 }
 
 sub setProxy {
     my ( $self, $data ) = @_;
+
     my $response = Utils::HTTP({
-        ua => $self->toxiproxy->{ ua },
-        endpoint => $self->toxiproxy->{ base_url } . "/proxies/" . $self->name,
-        body => json_encode( $data ),
+        ua          => $self->toxiproxy->{ ua },
+        method      => 'POST',
+        endpoint    => $self->toxiproxy->{ base_url } . "/proxies/" . $self->name,
+        body        => encode_json $data,
     });
 
-    return $response->content(); # XXX
+    return $response->content();
 }
 
 sub update {
-    my ( $self, $toxic, $direction, @options ) = @_;
+    my ( $self, $toxic, $direction, $options ) = @_;
     my @valid_directions = ( UPSTREAM, DOWNSTREAM );
     
     die "Invalid direction, must be one of valid_directions"
         unless grep { $_ eq $direction } @valid_directions;
 
-    my @settings = (); # XXX check on what this does!
-    my $key = $direction . "Toxics";
-    my @direction_data = $self->{ $key };
-    
-    push @direction_data, $toxic
-        unless ( grep { $_ eq $toxic } @direction_data );
-
     return $self->setToxic(
         $toxic,
         $direction,
-        ( @direction_data, @options ) # FIXME : think about the request object
+        $options,
     );
 }
 
 sub updateDownStream {
-    my ( $self, $toxic, @options ) = @_;
+    my ( $self, $toxic, $options ) = @_;
     return $self->update(
         $toxic,
         DOWNSTREAM,
-        @options,
+        $options,
     );
 }
 
 sub updateUpStream {
-    my ( $self, $toxic, @options ) = @_;
+    my ( $self, $toxic, $options ) = @_;
     return $self->update(
         $toxic,
         UPSTREAM,
-        @options,
+        $options,
     );
 }
 
